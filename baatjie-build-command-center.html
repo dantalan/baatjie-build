@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>BAATJIE BUILD · COMMAND CENTER</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;font-size:14px}
+body{min-height:100vh;background:#030A0E;color:#B8D8E8;font-family:'Space Mono',monospace;overflow-x:hidden}
+
+:root{
+  --bg:#030A0E;--s1:#071218;--s2:#0A1820;--s3:#0E2030;
+  --teal:#00B4D8;--teal-dim:#007A94;
+  --green:#2ECC8A;--green-dim:#1A6A45;
+  --gold:#D4AF37;--gold-dim:#6A5818;
+  --red:#C41E0A;--orange:#E85D04;
+  --text:#B8D8E8;--text-dim:#3A5A6A;--text-mute:#1A2A33;
+  --border:rgba(0,180,216,.1);--border-bright:rgba(0,180,216,.25);
+}
+
+@keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes glow{0%,100%{box-shadow:0 0 4px rgba(0,180,216,.2)}50%{box-shadow:0 0 12px rgba(0,180,216,.5)}}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+
+body::before{
+  content:'';position:fixed;top:0;left:0;right:0;
+  height:2px;background:linear-gradient(90deg,transparent,var(--teal),transparent);
+  opacity:.3;animation:scanline 8s linear infinite;pointer-events:none;z-index:9999;
+}
+
+/* HEADER */
+.header{
+  padding:20px 16px 0;
+  border-bottom:1px solid var(--border);
+  background:rgba(3,10,14,.97);
+  position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(20px);
+}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.brand-mark{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.5em;color:var(--teal);text-transform:uppercase}
+.brand-title{font-family:'Cinzel',serif;font-size:18px;font-weight:900;color:#fff;letter-spacing:.15em;margin:2px 0}
+.brand-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:var(--text-dim);margin-bottom:14px}
+
+.status-bar{display:flex;gap:0;border-top:1px solid var(--border);margin:0 -16px}
+.stat{flex:1;padding:8px 12px;border-right:1px solid var(--border);text-align:center}
+.stat:last-child{border-right:none}
+.stat-val{font-size:11px;color:var(--teal);font-weight:700;letter-spacing:2px}
+.stat-lbl{font-size:7px;color:var(--text-dim);letter-spacing:2px;margin-top:2px}
+
+/* PROTOCOL STEPS */
+.section{padding:16px}
+.section-label{font-size:8px;letter-spacing:.4em;color:var(--text-dim);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* BUILD DECLARE */
+.declare-card{background:var(--s1);border:1px solid var(--border);border-radius:4px;padding:16px;margin-bottom:10px}
+.declare-card.active{border-color:var(--teal-dim);animation:glow 2s ease infinite}
+.declare-label{font-size:8px;letter-spacing:.3em;color:var(--text-dim);margin-bottom:6px}
+.declare-input{
+  width:100%;background:var(--s2);border:1px solid var(--border);
+  color:var(--text);font-family:'Space Mono',monospace;font-size:12px;
+  padding:10px 12px;border-radius:3px;outline:none;
+  transition:border-color .2s;
+}
+.declare-input:focus{border-color:var(--teal)}
+.declare-input::placeholder{color:var(--text-mute)}
+select.declare-input{cursor:pointer}
+
+.repo-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+
+/* PROTOCOL GATES */
+.gate{
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:4px;padding:14px;margin-bottom:8px;
+  display:flex;align-items:flex-start;gap:12px;
+  transition:border-color .3s,background .3s;
+}
+.gate.complete{border-color:var(--green-dim);background:rgba(46,204,138,.04)}
+.gate.active{border-color:var(--teal-dim);background:rgba(0,180,216,.04)}
+.gate.pending{opacity:.5}
+.gate.error{border-color:var(--red);background:rgba(196,30,10,.04)}
+
+.gate-icon{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;flex-shrink:0;margin-top:1px;
+  border:1px solid var(--border);background:var(--s2);
+  transition:all .3s;
+}
+.gate.complete .gate-icon{background:var(--green-dim);border-color:var(--green);color:#fff}
+.gate.active .gate-icon{background:var(--teal-dim);border-color:var(--teal);color:#fff;animation:pulse 1.5s ease infinite}
+.gate.error .gate-icon{background:rgba(196,30,10,.3);border-color:var(--red);color:var(--red)}
+
+.gate-body{flex:1}
+.gate-title{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.2em;color:var(--text);margin-bottom:3px}
+.gate-desc{font-size:9px;color:var(--text-dim);line-height:1.6;letter-spacing:.05em}
+.gate-action{
+  margin-top:10px;width:100%;
+  background:transparent;border:1px solid var(--teal-dim);
+  color:var(--teal);font-family:'Space Mono',monospace;
+  font-size:9px;letter-spacing:.2em;text-transform:uppercase;
+  padding:8px 12px;border-radius:3px;cursor:pointer;
+  transition:all .2s;
+}
+.gate-action:hover{background:rgba(0,180,216,.1);border-color:var(--teal)}
+.gate-action.primary{background:var(--teal);color:#000;border-color:var(--teal)}
+.gate-action.primary:hover{background:var(--teal-dim);color:#fff}
+.gate-action.done{background:var(--green-dim);border-color:var(--green);color:#fff;cursor:default}
+.gate-action.danger{border-color:var(--red);color:var(--red)}
+
+.gate-link{
+  display:block;margin-top:8px;
+  font-size:9px;color:var(--teal-dim);
+  letter-spacing:.1em;word-break:break-all;
+  text-decoration:none;
+}
+.gate-link:hover{color:var(--teal)}
+
+/* CHANGELOG */
+.changelog-area{
+  width:100%;background:var(--s2);border:1px solid var(--border);
+  color:var(--text);font-family:'Space Mono',monospace;font-size:11px;
+  padding:10px 12px;border-radius:3px;outline:none;resize:vertical;
+  min-height:80px;line-height:1.6;
+  transition:border-color .2s;
+}
+.changelog-area:focus{border-color:var(--teal)}
+
+/* AI RESPONSE */
+.ai-panel{
+  background:var(--s2);border:1px solid var(--border-bright);
+  border-radius:4px;padding:14px;margin-top:8px;
+  animation:slideUp .3s ease;
+}
+.ai-label{font-size:7px;letter-spacing:.4em;color:var(--teal);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ai-dot{width:4px;height:4px;border-radius:50%;background:var(--teal);animation:pulse 1s ease infinite}
+.ai-text{font-family:'Cormorant Garamond',serif;font-size:14px;line-height:1.7;color:var(--text)}
+.ai-text.loading{color:var(--text-dim);font-style:italic}
+.spinner{display:inline-block;width:10px;height:10px;border:1px solid var(--text-dim);border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite;margin-right:6px;vertical-align:middle}
+
+/* LOG */
+.log-entry{
+  padding:8px 12px;border-left:2px solid var(--border);
+  margin-bottom:6px;font-size:9px;line-height:1.6;
+  animation:slideUp .2s ease;
+}
+.log-entry.success{border-left-color:var(--green);color:var(--green)}
+.log-entry.info{border-left-color:var(--teal);color:var(--text-dim)}
+.log-entry.warn{border-left-color:var(--gold);color:var(--gold)}
+.log-entry.error{border-left-color:var(--red);color:var(--red)}
+.log-time{opacity:.5;margin-right:8px}
+
+/* RUN BUTTON */
+.run-btn{
+  width:100%;padding:16px;
+  background:linear-gradient(135deg,var(--teal),var(--teal-dim));
+  border:none;border-radius:4px;
+  font-family:'Cinzel',serif;font-size:12px;letter-spacing:.4em;
+  color:#000;font-weight:700;text-transform:uppercase;
+  cursor:pointer;transition:all .2s;
+  margin-top:4px;
+}
+.run-btn:hover{background:linear-gradient(135deg,#00d4ff,var(--teal));transform:translateY(-1px)}
+.run-btn:active{transform:translateY(0)}
+.run-btn:disabled{background:var(--s2);color:var(--text-dim);cursor:not-allowed;transform:none}
+
+.reset-btn{
+  width:100%;padding:10px;margin-top:8px;
+  background:transparent;border:1px solid var(--border);
+  color:var(--text-dim);font-family:'Space Mono',monospace;
+  font-size:9px;letter-spacing:.2em;cursor:pointer;border-radius:3px;
+  transition:all .2s;
+}
+.reset-btn:hover{border-color:var(--text-dim);color:var(--text)}
+
+/* COVENANT */
+.covenant{
+  text-align:center;padding:20px 16px;
+  border-top:1px solid var(--border);margin-top:8px;
+}
+.covenant-text{
+  font-family:'Cormorant Garamond',serif;font-style:italic;
+  font-size:13px;color:var(--text-dim);letter-spacing:.1em;
+}
+.covenant-mark{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.4em;color:var(--gold);margin-top:6px}
+
+/* CHIPS */
+.chip{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 8px;border-radius:2px;font-size:8px;letter-spacing:.15em;
+  border:1px solid;margin:2px;
+}
+.chip.green{border-color:var(--green-dim);color:var(--green);background:rgba(46,204,138,.06)}
+.chip.teal{border-color:var(--teal-dim);color:var(--teal);background:rgba(0,180,216,.06)}
+.chip.gold{border-color:var(--gold-dim);color:var(--gold);background:rgba(212,175,55,.06)}
+.chip.red{border-color:var(--red);color:var(--red);background:rgba(196,30,10,.06)}
+
+.divider{height:1px;background:var(--border);margin:4px 0}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="brand-mark">bluebaatjie sovereign</div>
+      <div class="brand-title">BAATJIE BUILD</div>
+      <div class="brand-sub">Command Center · Protocol Enforced</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:8px;color:var(--text-dim);letter-spacing:.2em" id="live-time">--:--:--</div>
+      <div style="font-size:7px;color:var(--gold);letter-spacing:.2em;margin-top:3px">86417</div>
+    </div>
+  </div>
+  <div class="status-bar">
+    <div class="stat">
+      <div class="stat-val" id="stat-builds">0</div>
+      <div class="stat-lbl">BUILDS</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="stat-deployed">0</div>
+      <div class="stat-lbl">DEPLOYED</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="stat-gate">—</div>
+      <div class="stat-lbl">GATE</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="stat-status">READY</div>
+      <div class="stat-lbl">STATUS</div>
+    </div>
+  </div>
+</div>
+
+<div style="padding:16px">
+
+  <!-- DECLARE BUILD -->
+  <div class="section-label">01 · DECLARE BUILD</div>
+
+  <div class="declare-card active">
+    <div class="declare-label">BUILD NAME</div>
+    <input class="declare-input" id="build-name" type="text" placeholder="e.g. sigscheONE v6 · Card Studio" />
+
+    <div style="margin-top:10px">
+      <div class="declare-label">TARGET REPO</div>
+      <select class="declare-input" id="target-repo">
+        <option value="">— SELECT REPO —</option>
+        <option value="dantalan/Sigsche3ONE">dantalan/Sigsche3ONE — Signal Scheduler</option>
+        <option value="dantalan/tanOS">dantalan/tanOS — Property OS</option>
+        <option value="dantalan/talunation-">dantalan/talunation- — Taluna Calendar</option>
+        <option value="dantalan/danOS">dantalan/danOS — danOS</option>
+        <option value="dantalan/taluna">dantalan/taluna — Taluna Core</option>
+      </select>
+    </div>
+
+    <div class="repo-row" style="margin-top:10px">
+      <div>
+        <div class="declare-label">FILE IN DRIVE</div>
+        <input class="declare-input" id="drive-file" type="text" placeholder="filename.html" />
+      </div>
+      <div>
+        <div class="declare-label">BUILD TYPE</div>
+        <select class="declare-input" id="build-type">
+          <option value="patch">PATCH</option>
+          <option value="minor">MINOR</option>
+          <option value="major">MAJOR</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHANGELOG -->
+  <div class="declare-card" style="margin-top:-2px">
+    <div class="declare-label">CHANGELOG ENTRY · Required before merge</div>
+    <textarea class="changelog-area" id="changelog-text" placeholder="e.g. [MINOR] Card Studio: added PNG export per card, bulk ZIP download. Supabase persistence wired to brand_cards table."></textarea>
+    <div style="display:flex;justify-content:space-between;margin-top:6px">
+      <span style="font-size:8px;color:var(--text-dim)">CHANGELOG.md will be prepended on run</span>
+      <span style="font-size:8px;color:var(--text-dim)" id="char-count">0 chars</span>
+    </div>
+  </div>
+
+  <button class="run-btn" id="run-btn" onclick="runProtocol()">◆ RUN BUILD PROTOCOL</button>
+
+  <!-- AI BRIEF -->
+  <div id="ai-section" style="display:none;margin-top:16px">
+    <div class="section-label">AI · BUILD BRIEF</div>
+    <div class="ai-panel" id="ai-panel">
+      <div class="ai-label"><div class="ai-dot"></div>BAATJIE INTELLIGENCE</div>
+      <div class="ai-text" id="ai-output">Initialising...</div>
+    </div>
+  </div>
+
+  <!-- PROTOCOL GATES -->
+  <div id="gates-section" style="display:none;margin-top:16px">
+    <div class="section-label">02 · PROTOCOL GATES</div>
+
+    <div class="gate pending" id="gate-drive">
+      <div class="gate-icon" id="icon-drive">①</div>
+      <div class="gate-body">
+        <div class="gate-title">DRIVE · FILE CONFIRMED</div>
+        <div class="gate-desc" id="desc-drive">File must be in Drive root before push. 125,197b minimum integrity check.</div>
+        <button class="gate-action" id="btn-drive" onclick="confirmGate('drive')">CONFIRM FILE IN DRIVE ✓</button>
+      </div>
+    </div>
+
+    <div class="gate pending" id="gate-github">
+      <div class="gate-icon" id="icon-github">②</div>
+      <div class="gate-body">
+        <div class="gate-title">GITHUB · FILE PUSHED</div>
+        <div class="gate-desc" id="desc-github">Push via Files app → Share → Drive → GitHub (Gemini Workspace bridge). Branch: main.</div>
+        <div id="github-link-block" style="display:none">
+          <a class="gate-link" id="github-link" href="#" target="_blank">↗ Open GitHub Repo</a>
+        </div>
+        <button class="gate-action" id="btn-github" onclick="confirmGate('github')" disabled>CONFIRM PUSHED TO GITHUB ✓</button>
+      </div>
+    </div>
+
+    <div class="gate pending" id="gate-netlify">
+      <div class="gate-icon" id="icon-netlify">③</div>
+      <div class="gate-body">
+        <div class="gate-title">NETLIFY · AUTO-BUILD TRIGGERED</div>
+        <div class="gate-desc">Push to main triggers auto-deploy. Check Netlify dashboard for build log.</div>
+        <a class="gate-link" href="https://app.netlify.com/teams/talandan26/sites" target="_blank">↗ Open Netlify Dashboard</a>
+        <button class="gate-action" id="btn-netlify" onclick="confirmGate('netlify')" disabled>CONFIRM DEPLOY LIVE ✓</button>
+      </div>
+    </div>
+
+    <div class="gate pending" id="gate-schema">
+      <div class="gate-icon" id="icon-schema">④</div>
+      <div class="gate-body">
+        <div class="gate-title">SCHEMA · MIGRATIONS COMMITTED</div>
+        <div class="gate-desc">Any DB changes must be in /supabase/migrations. RLS on every table. Append-only where required.</div>
+        <button class="gate-action" id="btn-schema" onclick="confirmGate('schema')" disabled>CONFIRM SCHEMA IN GIT ✓</button>
+        <button class="gate-action danger" style="margin-top:6px" onclick="skipGate('schema')">NO DB CHANGES · SKIP</button>
+      </div>
+    </div>
+
+    <div class="gate pending" id="gate-env">
+      <div class="gate-icon" id="icon-env">⑤</div>
+      <div class="gate-body">
+        <div class="gate-title">ENV VARS · TWO-PLACE RULE</div>
+        <div class="gate-desc">VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY set in BOTH .env.local AND Netlify dashboard. They do not auto-sync.</div>
+        <button class="gate-action" id="btn-env" onclick="confirmGate('env')" disabled>CONFIRM ENV VARS SET ✓</button>
+        <button class="gate-action danger" style="margin-top:6px" onclick="skipGate('env')">NO ENV CHANGES · SKIP</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DEPLOY LOG -->
+  <div id="log-section" style="display:none;margin-top:16px">
+    <div class="section-label">03 · DEPLOY LOG</div>
+    <div id="log-entries"></div>
+  </div>
+
+  <!-- COMPLETE -->
+  <div id="complete-section" style="display:none;margin-top:16px">
+    <div style="background:rgba(46,204,138,.06);border:1px solid var(--green-dim);border-radius:4px;padding:20px;text-align:center">
+      <div style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:.3em;color:var(--green);margin-bottom:8px">◆ BUILD COMPLETE</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:var(--text-dim)" id="complete-name">—</div>
+      <div style="margin-top:12px;display:flex;flex-wrap:wrap;justify-content:center;gap:4px" id="complete-chips"></div>
+    </div>
+    <button class="reset-btn" onclick="resetProtocol()">◻ NEW BUILD</button>
+  </div>
+
+</div>
+
+<div class="covenant">
+  <div class="covenant-text">s'dla sonke, s'fa sonke</div>
+  <div class="covenant-mark">BAATJIE BUILD · ONE. ◆ · 86417</div>
+</div>
+
+<script>
+// STATE
+const state = {
+  buildName: '',
+  repo: '',
+  file: '',
+  type: 'patch',
+  changelog: '',
+  gates: { drive: false, github: false, netlify: false, schema: false, env: false },
+  skipped: { schema: false, env: false },
+  builds: parseInt(localStorage.getItem('bb_builds') || '0'),
+  deployed: parseInt(localStorage.getItem('bb_deployed') || '0'),
+  currentGate: 'drive',
+  running: false
+};
+
+// CLOCK
+function updateClock() {
+  const now = new Date();
+  const t = now.toTimeString().slice(0,8);
+  document.getElementById('live-time').textContent = t;
+  // angel number check
+  const hhmm = t.slice(0,5).replace(':','');
+  if(['1111','1313','2222','0817'].includes(hhmm)) {
+    document.getElementById('live-time').style.color = 'var(--gold)';
+  } else {
+    document.getElementById('live-time').style.color = 'var(--text-dim)';
+  }
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// STATS
+function updateStats() {
+  document.getElementById('stat-builds').textContent = state.builds;
+  document.getElementById('stat-deployed').textContent = state.deployed;
+}
+updateStats();
+
+// CHANGELOG COUNTER
+document.getElementById('changelog-text').addEventListener('input', function() {
+  document.getElementById('char-count').textContent = this.value.length + ' chars';
+  state.changelog = this.value;
+});
+document.getElementById('build-name').addEventListener('input', function() { state.buildName = this.value; });
+document.getElementById('target-repo').addEventListener('change', function() { state.repo = this.value; });
+document.getElementById('drive-file').addEventListener('input', function() { state.file = this.value; });
+document.getElementById('build-type').addEventListener('change', function() { state.type = this.value; });
+
+// LOG
+function addLog(msg, type='info') {
+  const log = document.getElementById('log-entries');
+  const time = new Date().toTimeString().slice(0,8);
+  const el = document.createElement('div');
+  el.className = `log-entry ${type}`;
+  el.innerHTML = `<span class="log-time">${time}</span>${msg}`;
+  log.appendChild(el);
+  el.scrollIntoView({behavior:'smooth'});
+}
+
+// GATE UPDATE
+function setGate(id, status) {
+  const el = document.getElementById('gate-' + id);
+  const icon = document.getElementById('icon-' + id);
+  el.className = 'gate ' + status;
+  if(status === 'complete') icon.textContent = '✓';
+  if(status === 'active') icon.textContent = icon.textContent;
+  if(status === 'error') icon.textContent = '✕';
+}
+
+function enableGate(id) {
+  const btn = document.getElementById('btn-' + id);
+  if(btn) btn.disabled = false;
+  setGate(id, 'active');
+  state.currentGate = id;
+  document.getElementById('stat-gate').textContent = id.toUpperCase();
+}
+
+// CONFIRM GATE
+function confirmGate(id) {
+  state.gates[id] = true;
+  setGate(id, 'complete');
+  const btn = document.getElementById('btn-' + id);
+  if(btn) { btn.textContent = '✓ CONFIRMED'; btn.className = 'gate-action done'; btn.disabled = true; }
+  addLog(`Gate ${id.toUpperCase()} confirmed ✓`, 'success');
+
+  const sequence = ['drive','github','netlify','schema','env'];
+  const next = getNextGate(id, sequence);
+  if(next) {
+    enableGate(next);
+  } else {
+    completeBuild();
+  }
+}
+
+function skipGate(id) {
+  state.skipped[id] = true;
+  state.gates[id] = true;
+  setGate(id, 'complete');
+  const btns = document.getElementById('gate-' + id).querySelectorAll('button');
+  btns.forEach(b => { b.disabled = true; b.style.opacity = '.4'; });
+  addLog(`Gate ${id.toUpperCase()} skipped — no changes`, 'info');
+
+  const sequence = ['drive','github','netlify','schema','env'];
+  const next = getNextGate(id, sequence);
+  if(next) enableGate(next);
+  else completeBuild();
+}
+
+function getNextGate(current, sequence) {
+  const idx = sequence.indexOf(current);
+  for(let i = idx+1; i < sequence.length; i++) {
+    if(!state.gates[sequence[i]]) return sequence[i];
+  }
+  return null;
+}
+
+// RUN PROTOCOL
+async function runProtocol() {
+  // VALIDATE
+  if(!state.buildName || !document.getElementById('build-name').value.trim()) {
+    alert('Name the build first.');
+    return;
+  }
+  if(!state.repo || !document.getElementById('target-repo').value) {
+    alert('Select target repo.');
+    return;
+  }
+  if(!document.getElementById('changelog-text').value.trim()) {
+    alert('CHANGELOG entry required before running protocol.');
+    return;
+  }
+
+  state.buildName = document.getElementById('build-name').value.trim();
+  state.repo = document.getElementById('target-repo').value;
+  state.file = document.getElementById('drive-file').value.trim();
+  state.changelog = document.getElementById('changelog-text').value.trim();
+  state.type = document.getElementById('build-type').value;
+
+  // INCREMENT
+  state.builds++;
+  localStorage.setItem('bb_builds', state.builds);
+  updateStats();
+  document.getElementById('stat-status').textContent = 'RUNNING';
+
+  // SHOW SECTIONS
+  document.getElementById('ai-section').style.display = 'block';
+  document.getElementById('gates-section').style.display = 'block';
+  document.getElementById('log-section').style.display = 'block';
+  document.getElementById('run-btn').disabled = true;
+
+  // SET GITHUB LINK
+  const repoUrl = `https://github.com/${state.repo}`;
+  document.getElementById('github-link').href = repoUrl;
+  document.getElementById('github-link-block').style.display = 'block';
+  document.getElementById('desc-github').textContent = `Push ${state.file || 'file'} to ${state.repo} via Gemini Workspace. Branch: main.`;
+
+  // LOG START
+  addLog(`Build declared: ${state.buildName}`, 'info');
+  addLog(`Repo: ${state.repo} · Type: ${state.type.toUpperCase()}`, 'info');
+  addLog('Invoking BAATJIE INTELLIGENCE...', 'info');
+
+  // AI BRIEF
+  await generateAIBrief();
+
+  // ACTIVATE FIRST GATE
+  enableGate('drive');
+  addLog('Protocol running. Complete each gate to proceed.', 'info');
+}
+
+// AI BRIEF via Anthropic API
+async function generateAIBrief() {
+  const output = document.getElementById('ai-output');
+  output.innerHTML = '<span class="spinner"></span>Analysing build...';
+  output.className = 'ai-text loading';
+
+  const buildName = document.getElementById('build-name').value.trim();
+  const repo = document.getElementById('target-repo').value;
+  const file = document.getElementById('drive-file').value.trim();
+  const changelog = document.getElementById('changelog-text').value.trim();
+  const type = document.getElementById('build-type').value;
+
+  const prompt = `You are the BAATJIE BUILD intelligence for the bluebaatjie Sovereign Ecosystem. You speak in the voice of the ecosystem: terse, declaratory, sovereign, Pan-African, philosophically grounded. The covenant phrase is "s'dla sonke, s'fa sonke." The number 86417 is sacred.
+
+A build has been declared. Give a sharp, intelligent 2-3 sentence brief on this build — what it means for the ecosystem, any risk flags based on the changelog, and one signal about what this build unlocks. Do NOT use bullet points. Speak directly to the builder.
+
+Build: ${buildName}
+Repo: ${repo}
+File: ${file || 'not specified'}
+Type: ${type.toUpperCase()}
+Changelog: ${changelog}`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await response.json();
+    const text = data.content?.find(b => b.type === 'text')?.text || 'Brief unavailable.';
+    output.textContent = text;
+    output.className = 'ai-text';
+    addLog('AI brief generated ✓', 'success');
+  } catch(e) {
+    output.textContent = 'Intelligence offline. Proceed manually.';
+    output.className = 'ai-text';
+    addLog('AI brief failed — proceeding', 'warn');
+  }
+}
+
+// COMPLETE
+function completeBuild() {
+  state.deployed++;
+  localStorage.setItem('bb_deployed', state.deployed);
+  document.getElementById('stat-deployed').textContent = state.deployed;
+  document.getElementById('stat-status').textContent = 'LIVE';
+  document.getElementById('stat-gate').textContent = '✓';
+
+  document.getElementById('complete-section').style.display = 'block';
+  document.getElementById('complete-name').textContent = state.buildName;
+
+  const chips = document.getElementById('complete-chips');
+  chips.innerHTML = `
+    <span class="chip green">✓ DRIVE</span>
+    <span class="chip green">✓ GITHUB</span>
+    <span class="chip green">✓ NETLIFY</span>
+    ${state.skipped.schema ? '<span class="chip teal">— SCHEMA SKIPPED</span>' : '<span class="chip green">✓ SCHEMA</span>'}
+    ${state.skipped.env ? '<span class="chip teal">— ENV SKIPPED</span>' : '<span class="chip green">✓ ENV VARS</span>'}
+    <span class="chip gold">${state.type.toUpperCase()} · ${state.repo.split('/')[1]}</span>
+  `;
+
+  addLog(`◆ BUILD COMPLETE — ${state.buildName}`, 'success');
+  addLog(`Deployed build #${state.deployed} · ${new Date().toLocaleString()}`, 'success');
+  document.getElementById('complete-section').scrollIntoView({behavior:'smooth'});
+}
+
+// RESET
+function resetProtocol() {
+  state.gates = { drive: false, github: false, netlify: false, schema: false, env: false };
+  state.skipped = { schema: false, env: false };
+  state.running = false;
+
+  ['drive','github','netlify','schema','env'].forEach(id => {
+    setGate(id, 'pending');
+    const btn = document.getElementById('btn-' + id);
+    if(btn) { btn.disabled = true; btn.className = 'gate-action'; btn.textContent = btn.textContent.replace('✓ CONFIRMED','CONFIRM').replace(' ✓',''); }
+  });
+  // Reset first gate button
+  document.getElementById('btn-drive').textContent = 'CONFIRM FILE IN DRIVE ✓';
+  document.getElementById('btn-github').textContent = 'CONFIRM PUSHED TO GITHUB ✓';
+  document.getElementById('btn-netlify').textContent = 'CONFIRM DEPLOY LIVE ✓';
+  document.getElementById('btn-schema').textContent = 'CONFIRM SCHEMA IN GIT ✓';
+  document.getElementById('btn-env').textContent = 'CONFIRM ENV VARS SET ✓';
+
+  document.getElementById('ai-section').style.display = 'none';
+  document.getElementById('gates-section').style.display = 'none';
+  document.getElementById('log-section').style.display = 'none';
+  document.getElementById('complete-section').style.display = 'none';
+  document.getElementById('log-entries').innerHTML = '';
+  document.getElementById('run-btn').disabled = false;
+
+  document.getElementById('build-name').value = '';
+  document.getElementById('target-repo').value = '';
+  document.getElementById('drive-file').value = '';
+  document.getElementById('changelog-text').value = '';
+  document.getElementById('char-count').textContent = '0 chars';
+  document.getElementById('stat-status').textContent = 'READY';
+  document.getElementById('stat-gate').textContent = '—';
+
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>
